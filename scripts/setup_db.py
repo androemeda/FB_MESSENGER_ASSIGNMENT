@@ -36,29 +36,63 @@ def wait_for_cassandra():
 def create_keyspace(session):
     """
     Create the keyspace if it doesn't exist.
-    
-    This is where students will define the keyspace configuration.
     """
     logger.info(f"Creating keyspace {CASSANDRA_KEYSPACE} if it doesn't exist...")
     
-    # TODO: Students should implement keyspace creation
-    # Hint: Consider replication strategy and factor for a distributed database
+    # Using SimpleStrategy with replication factor 3 for development
+    # In production, NetworkTopologyStrategy would be more appropriate
+    query = f"""
+    CREATE KEYSPACE IF NOT EXISTS {CASSANDRA_KEYSPACE}
+    WITH REPLICATION = {{
+        'class': 'SimpleStrategy',
+        'replication_factor': 3
+    }};
+    """
     
+    session.execute(query)
     logger.info(f"Keyspace {CASSANDRA_KEYSPACE} is ready.")
 
 def create_tables(session):
     """
     Create the tables for the application.
-    
-    This is where students will define the table schemas based on the requirements.
     """
     logger.info("Creating tables...")
     
-    # TODO: Students should implement table creation
-    # Hint: Consider:
-    # - What tables are needed to implement the required APIs?
-    # - What should be the primary keys and clustering columns?
-    # - How will you handle pagination and time-based queries?
+    # Table 1: messages_by_conversation - Stores messages organized by conversation
+    session.execute("""
+    CREATE TABLE IF NOT EXISTS messages_by_conversation (
+        conversation_id int,
+        message_timestamp timestamp,
+        message_id uuid,
+        sender_id int,
+        receiver_id int,
+        content text,
+        PRIMARY KEY ((conversation_id), message_timestamp, message_id)
+    ) WITH CLUSTERING ORDER BY (message_timestamp DESC, message_id ASC);
+    """)
+    
+    # Table 2: conversations_by_user - Tracks conversations for a user
+    session.execute("""
+    CREATE TABLE IF NOT EXISTS conversations_by_user (
+        user_id int,
+        last_message_timestamp timestamp,
+        conversation_id int,
+        other_user_id int,
+        last_message_content text,
+        PRIMARY KEY ((user_id), last_message_timestamp, conversation_id)
+    ) WITH CLUSTERING ORDER BY (last_message_timestamp DESC, conversation_id ASC);
+    """)
+    
+    # Table 3: conversation_participants - Stores conversation metadata
+    session.execute("""
+    CREATE TABLE IF NOT EXISTS conversation_participants (
+        conversation_id int,
+        user1_id int,
+        user2_id int,
+        created_at timestamp,
+        PRIMARY KEY (conversation_id)
+    );
+    """)
     
     logger.info("Tables created successfully.")
 
